@@ -12,6 +12,14 @@ namespace McpUnity.Services
     /// </summary>
     public class ConsoleLogsService : IConsoleLogsService
     {
+        // Static mapping for MCP log types to Unity log types
+        // Some MCP types map to multiple Unity types (e.g., "error" includes Error, Exception and Assert)
+        private static readonly Dictionary<string, HashSet<string>> LogTypeMapping = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "info", new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Log" } },
+            { "error", new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Error", "Exception", "Assert" } }
+        };
+        
         // Structure to store log information
         private class LogEntry
         {
@@ -96,13 +104,28 @@ namespace McpUnity.Services
             int filteredCount = 0;
             int currentIndex = 0;
             
+            // Map MCP log types to Unity log types outside the loop for better performance
+            HashSet<string> unityLogTypes = null;
+            if (filter)
+            {
+                if (LogTypeMapping.TryGetValue(logType, out var mapped))
+                {
+                    unityLogTypes = mapped;
+                }
+                else
+                {
+                    // If no mapping exists, create a set with the original type for case-insensitive comparison
+                    unityLogTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { logType };
+                }
+            }
+            
             lock (_logEntries)
             {
                 // First pass: count total and filtered entries
                 foreach (var entry in _logEntries)
                 {
                     totalCount++;
-                    if (!filter || entry.Type.ToString().Equals(logType, System.StringComparison.OrdinalIgnoreCase))
+                    if (!filter || unityLogTypes.Contains(entry.Type.ToString()))
                     {
                         filteredCount++;
                     }
@@ -112,7 +135,7 @@ namespace McpUnity.Services
                 for (int i = _logEntries.Count - 1; i >= 0; i--)
                 {
                     var entry = _logEntries[i];
-                    if (filter && !entry.Type.ToString().Equals(logType, System.StringComparison.OrdinalIgnoreCase))
+                    if (filter && !unityLogTypes.Contains(entry.Type.ToString()))
                         continue;
                         
                     if (currentIndex >= offset && logsArray.Count < limit)
