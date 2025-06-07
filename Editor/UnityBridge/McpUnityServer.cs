@@ -28,7 +28,7 @@ namespace McpUnity.Unity
         private WebSocketServer _webSocketServer;
         private CancellationTokenSource _cts;
         private TestRunnerService _testRunnerService;
-        private ConsoleLogsService _consoleLogsService;
+        private IConsoleLogsService _consoleLogsService;
 
         /// <summary>
         /// Static constructor that gets called when Unity loads due to InitializeOnLoad attribute
@@ -249,8 +249,26 @@ namespace McpUnity.Unity
             // Initialize the test runner service
             _testRunnerService = new TestRunnerService();
             
-            // Initialize the console logs service
-            _consoleLogsService = new ConsoleLogsService();
+            // Initialize the console logs service based on settings and Unity version
+            // Default to safe event-based implementation
+            var effectiveLogService = McpUnitySettings.Instance.GetEffectiveConsoleLogService();
+            
+            if (effectiveLogService == ConsoleLogServiceType.Unity6Enhanced)
+            {
+#if UNITY_6000_0_OR_NEWER
+                _consoleLogsService = new ConsoleLogsServiceUnity6();
+                McpLogger.LogInfo($"[MCP Unity] Console Log Service: Unity 6 Enhanced (experimental, uses internal APIs)");
+#else
+                McpLogger.LogWarning($"[MCP Unity] Console Log Service: Unity 6 Enhanced requested but Unity version is {Application.unityVersion}. Falling back to Event-Based service.");
+                _consoleLogsService = new ConsoleLogsService();
+#endif
+            }
+            else
+            {
+                // Default to safe event-based implementation
+                _consoleLogsService = new ConsoleLogsService();
+                McpLogger.LogInfo($"[MCP Unity] Console Log Service: Event-Based (default, safe)");
+            }
         }
     }
 }

@@ -7,6 +7,18 @@ using UnityEditor;
 namespace McpUnity.Unity
 {
     /// <summary>
+    /// Console log service implementation options
+    /// </summary>
+    public enum ConsoleLogServiceType
+    {
+        [Tooltip("Event-based implementation (default, safe) - may occasionally miss logs")]
+        EventBased,
+        
+        [Tooltip("Unity 6 enhanced implementation (experimental) - uses internal APIs for better reliability")]
+        Unity6Enhanced
+    }
+    
+    /// <summary>
     /// Handles persistence of MCP Unity settings
     /// </summary>
     [Serializable]
@@ -36,6 +48,9 @@ namespace McpUnity.Unity
 
         [Tooltip("Optional: Full path to the npm executable (e.g., /Users/user/.asdf/shims/npm or C:\\path\\to\\npm.cmd). If not set, 'npm' from the system PATH will be used.")]
         public string NpmExecutablePath = string.Empty;
+        
+        [Tooltip("Console log service implementation to use. EventBased (default, safe) may occasionally miss logs. Unity6Enhanced uses internal APIs for better reliability but requires Unity 6+ and should only be used when explicitly needed. Server restart required when changed.")]
+        public ConsoleLogServiceType ConsoleLogService = ConsoleLogServiceType.EventBased;
 
         /// <summary>
         /// Singleton instance of settings
@@ -106,6 +121,34 @@ namespace McpUnity.Unity
                 // Can't use LoggerService here as it might create circular dependency
                 Debug.LogError($"[MCP Unity] Failed to save settings: {ex.Message}");
             }
+        }
+        
+        /// <summary>
+        /// Get the effective console log service type, considering command line overrides
+        /// </summary>
+        /// <returns>The console log service type to use</returns>
+        public ConsoleLogServiceType GetEffectiveConsoleLogService()
+        {
+            // Check for command line argument override
+            string[] args = Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                if (args[i] == "-mcpConsoleLogService" || args[i] == "--mcpConsoleLogService")
+                {
+                    if (Enum.TryParse<ConsoleLogServiceType>(args[i + 1], true, out var commandLineService))
+                    {
+                        Debug.Log($"[MCP Unity] Using console log service from command line: {commandLineService}");
+                        return commandLineService;
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[MCP Unity] Invalid console log service type from command line: {args[i + 1]}. Using settings value.");
+                    }
+                }
+            }
+            
+            // Return the configured setting
+            return ConsoleLogService;
         }
     }
 }

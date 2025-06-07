@@ -142,6 +142,30 @@ namespace McpUnity.Unity
             }
             
             EditorGUILayout.Space();
+            
+            // Console log service selection
+            ConsoleLogServiceType newConsoleLogService = (ConsoleLogServiceType)EditorGUILayout.EnumPopup(
+                new GUIContent("Console Log Service", "Select console log service implementation. EventBased is safe but may miss some logs. Unity6Enhanced uses internal APIs for better reliability but requires Unity 6+. Server restart required when changed."),
+                settings.ConsoleLogService);
+            if (newConsoleLogService != settings.ConsoleLogService)
+            {
+                settings.ConsoleLogService = newConsoleLogService;
+                settings.SaveSettings();
+                
+                // Show warning for Unity6Enhanced
+                if (newConsoleLogService == ConsoleLogServiceType.Unity6Enhanced)
+                {
+#if UNITY_6000_0_OR_NEWER
+                    EditorUtility.DisplayDialog("Console Log Service Changed", 
+                        "Unity 6 enhanced console log service selected. This uses internal Unity APIs for better reliability but may break in future Unity versions.\n\nRestart the MCP server for changes to take effect.", "OK");
+#else
+                    EditorUtility.DisplayDialog("Console Log Service Warning", 
+                        $"Unity 6 enhanced console log service selected but current Unity version is {Application.unityVersion}. The service will fall back to event-based implementation.\n\nRestart the MCP server for changes to take effect.", "OK");
+#endif
+                }
+            }
+            
+            EditorGUILayout.Space();
 
             // Server control buttons
             EditorGUILayout.BeginHorizontal();
