@@ -251,9 +251,9 @@ namespace McpUnity.Unity
             
             // Initialize the console logs service based on settings and Unity version
             // Default to safe event-based implementation
-            var effectiveLogService = McpUnitySettings.Instance.GetEffectiveConsoleLogService();
+            var consoleLogService = McpUnitySettings.Instance.ConsoleLogService;
             
-            if (effectiveLogService == ConsoleLogServiceType.Unity6Enhanced)
+            if (consoleLogService == ConsoleLogServiceType.Unity6Enhanced)
             {
 #if UNITY_6000_0_OR_NEWER
                 _consoleLogsService = new ConsoleLogsServiceUnity6();

@@ -122,33 +122,5 @@ namespace McpUnity.Unity
                 Debug.LogError($"[MCP Unity] Failed to save settings: {ex.Message}");
             }
         }
-        
-        /// <summary>
-        /// Get the effective console log service type, considering command line overrides
-        /// </summary>
-        /// <returns>The console log service type to use</returns>
-        public ConsoleLogServiceType GetEffectiveConsoleLogService()
-        {
-            // Check for command line argument override
-            string[] args = Environment.GetCommandLineArgs();
-            for (int i = 0; i < args.Length - 1; i++)
-            {
-                if (args[i] == "-mcpConsoleLogService" || args[i] == "--mcpConsoleLogService")
-                {
-                    if (Enum.TryParse<ConsoleLogServiceType>(args[i + 1], true, out var commandLineService))
-                    {
-                        Debug.Log($"[MCP Unity] Using console log service from command line: {commandLineService}");
-                        return commandLineService;
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"[MCP Unity] Invalid console log service type from command line: {args[i + 1]}. Using settings value.");
-                    }
-                }
-            }
-            
-            // Return the configured setting
-            return ConsoleLogService;
-        }
     }
 }
