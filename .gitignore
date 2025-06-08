@@ -121,3 +121,6 @@ log.txt
 log.txt.meta
 Server~/build/*
 Server~/node_modules/*
+
+# Claude settings
+.claude/settings.local.json
