@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json.Linq;
@@ -164,13 +165,24 @@ namespace McpUnity.Services
                     
                     if (!success) continue;
                     
-                    // Extract fields
+                    // Extract fields (see Unity6InternalAPIReference.md for field details)
                     string fullMessage = _messageField?.GetValue(logEntry) as string ?? "";
                     string file = _fileField?.GetValue(logEntry) as string ?? "";
                     int line = _lineField?.GetValue(logEntry) as int? ?? 0;
                     int mode = _modeField?.GetValue(logEntry) as int? ?? 0;
                     int callstackStartUTF8 = _callstackTextStartUTF8Field?.GetValue(logEntry) as int? ?? 0;
                     int callstackStartUTF16 = _callstackTextStartUTF16Field?.GetValue(logEntry) as int? ?? 0;
+                    
+                    // Debug: Write mode values to file for analysis (disabled by default)
+                    #if MCP_UNITY_DEBUG_MODE_VALUES
+                    if (fullMessage.Contains("error") || fullMessage.Contains("Error") || 
+                        fullMessage.Contains("warning") || fullMessage.Contains("Warning") ||
+                        fullMessage.Contains("failed") || fullMessage.Contains("Failed") ||
+                        fullMessage.Contains("exception") || fullMessage.Contains("Exception"))
+                    {
+                        WriteDebugInfo(fullMessage, mode);
+                    }
+                    #endif
                     
                     // Parse message and stack trace using Unity's internal callstack position (prefer UTF-16)
                     var (actualMessage, stackTrace) = ParseMessageAndStackTrace(fullMessage, callstackStartUTF16, callstackStartUTF8);
@@ -335,20 +347,8 @@ namespace McpUnity.Services
         
         private string GetLogTypeFromMode(int mode)
         {
-            // Mode flags from Unity's internal LogEntry
-            const int kModeError = 1;
-            const int kModeAssert = 2;
-            const int kModeLog = 4;
-            const int kModeWarning = 8;
-            const int kModeException = 16;
-            
-            if ((mode & kModeError) != 0) return "Error";
-            if ((mode & kModeAssert) != 0) return "Assert";
-            if ((mode & kModeException) != 0) return "Exception";
-            if ((mode & kModeWarning) != 0) return "Warning";
-            if ((mode & kModeLog) != 0) return "Log";
-            
-            return "Log"; // Default to Log instead of Unknown
+            // Use centralized mode flags logic
+            return LogEntryModeFlags.GetLogTypeFromMode(mode);
         }
         
         public void CleanupOldLogs(int keepCount = 500)
@@ -361,5 +361,25 @@ namespace McpUnity.Services
             ConsoleWindowUtility.GetConsoleLogCounts(out int error, out int warning, out int log);
             return error + warning + log;
         }
+        
+        #if MCP_UNITY_DEBUG_MODE_VALUES
+        /// <summary>
+        /// Debug method to write mode values to file for analysis
+        /// Enable by adding MCP_UNITY_DEBUG_MODE_VALUES to Project Settings > Player > Scripting Define Symbols
+        /// </summary>
+        private void WriteDebugInfo(string message, int mode)
+        {
+            try
+            {
+                string debugPath = Path.Combine(Application.dataPath, "..", "mcp-unity-debug.log");
+                string debugLine = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} | Mode: {mode} (0x{mode:X}) Binary: {Convert.ToString(mode, 2)} | Message: {message.Substring(0, Math.Min(100, message.Length))}...\n";
+                File.AppendAllText(debugPath, debugLine);
+            }
+            catch
+            {
+                // Ignore debug write errors
+            }
+        }
+        #endif
     }
 }

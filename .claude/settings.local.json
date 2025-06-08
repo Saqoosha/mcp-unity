@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__mcp-unity__get_console_logs",
+      "mcp__mcp-unity__send_console_log",
+      "mcp__apple-notifier__send_notification",
+      "WebFetch(domain:github.com)",
+      "Bash(rg:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git branch:*)",
+      "Bash(git merge-base:*)",
+      "Bash(git push:*)",
+      "Bash(git restore:*)"
+    ],
+    "deny": []
+  }
+}
