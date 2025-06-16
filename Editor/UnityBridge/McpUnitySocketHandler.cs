@@ -74,10 +74,12 @@ namespace McpUnity.Unity
                 }
                 else if (_server.TryGetResource(method, out var resource))
                 {
+                    McpLogger.LogInfo($"[DEBUG] Found resource: {resource.Name} for method: {method}");
                     EditorCoroutineUtility.StartCoroutineOwnerless(FetchResourceCoroutine(resource, parameters, tcs));
                 }
                 else
                 {
+                    McpLogger.LogWarning($"[DEBUG] Unknown method: {method}. Available resources: {string.Join(", ", _server.GetResourceNames())}");
                     tcs.SetResult(CreateErrorResponse($"Unknown method: {method}", "unknown_method"));
                 }
                 

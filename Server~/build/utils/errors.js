@@ -6,7 +6,7 @@ export var ErrorType;
     ErrorType["VALIDATION"] = "validation_error";
     ErrorType["INTERNAL"] = "internal_error";
     ErrorType["TIMEOUT"] = "timeout_error";
-})(ErrorType || (ErrorType = {}));
+})(ErrorType = ErrorType || (ErrorType = {}));
 export class McpUnityError extends Error {
     type;
     details;

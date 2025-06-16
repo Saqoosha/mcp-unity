@@ -41,5 +41,19 @@ namespace McpUnity.Services
         /// </summary>
         /// <returns>Number of stored log entries</returns>
         int GetLogCount();
+        
+        /// <summary>
+        /// Search logs with keyword or regex pattern
+        /// </summary>
+        /// <param name="keyword">Keyword to search for (partial match)</param>
+        /// <param name="regex">Regular expression pattern (overrides keyword if provided)</param>
+        /// <param name="logType">Filter by log type (empty for all)</param>
+        /// <param name="includeStackTrace">Whether to include stack trace in search (default: true)</param>
+        /// <param name="caseSensitive">Whether the search is case sensitive (default: false)</param>
+        /// <param name="offset">Starting index (0-based)</param>
+        /// <param name="limit">Maximum number of logs to return (default: 50)</param>
+        /// <returns>JObject containing matching logs array and pagination info</returns>
+        JObject SearchLogsAsJson(string keyword = null, string regex = null, string logType = null, 
+            bool includeStackTrace = true, bool caseSensitive = false, int offset = 0, int limit = 50);
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -360,6 +361,198 @@ namespace McpUnity.Services
         {
             ConsoleWindowUtility.GetConsoleLogCounts(out int error, out int warning, out int log);
             return error + warning + log;
+        }
+        
+        /// <summary>
+        /// Search logs with keyword or regex pattern
+        /// </summary>
+        public JObject SearchLogsAsJson(string keyword = null, string regex = null, string logType = null, 
+            bool includeStackTrace = true, bool caseSensitive = false, int offset = 0, int limit = 50)
+        {
+            // Prepare search criteria
+            bool hasSearchCriteria = !string.IsNullOrEmpty(keyword) || !string.IsNullOrEmpty(regex);
+            Regex searchRegex = null;
+            string searchKeyword = keyword;
+            
+            // If regex is provided, use it instead of keyword
+            if (!string.IsNullOrEmpty(regex))
+            {
+                try
+                {
+                    searchRegex = new Regex(regex, caseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase);
+                }
+                catch (ArgumentException ex)
+                {
+                    return new JObject
+                    {
+                        ["logs"] = new JArray(),
+                        ["error"] = $"Invalid regex pattern: {ex.Message}",
+                        ["success"] = false
+                    };
+                }
+            }
+            else if (!string.IsNullOrEmpty(keyword) && !caseSensitive)
+            {
+                searchKeyword = keyword.ToLower();
+            }
+            
+            // Map MCP log types to Unity log types
+            HashSet<string> unityLogTypes = null;
+            if (!string.IsNullOrEmpty(logType))
+            {
+                if (LogTypeMapping.TryGetValue(logType, out var mapped))
+                {
+                    unityLogTypes = mapped;
+                }
+                else
+                {
+                    unityLogTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { logType };
+                }
+            }
+            
+            JArray logsArray = new JArray();
+            int totalCount = 0;
+            int filteredCount = 0;
+            int matchedCount = 0;
+            int currentIndex = 0;
+            
+            // Get total count using reflection
+            try
+            {
+                totalCount = (int)_getCountMethod.Invoke(null, null);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[MCP Unity] Error getting log count: {ex.Message}");
+                return new JObject
+                {
+                    ["logs"] = logsArray,
+                    ["error"] = "Failed to access Unity console logs",
+                    ["success"] = false
+                };
+            }
+            
+            if (totalCount == 0)
+            {
+                return new JObject
+                {
+                    ["logs"] = logsArray,
+                    ["_totalCount"] = 0,
+                    ["_filteredCount"] = 0,
+                    ["_matchedCount"] = 0,
+                    ["_returnedCount"] = 0,
+                    ["success"] = true
+                };
+            }
+            
+            try
+            {
+                // Start getting entries
+                _startGettingEntriesMethod?.Invoke(null, null);
+                
+                // Search through logs (newest first)
+                for (int i = totalCount - 1; i >= 0; i--)
+                {
+                    // Create LogEntry instance
+                    var logEntry = Activator.CreateInstance(_logEntryType);
+                    
+                    // GetEntryInternal(int row, LogEntry outputEntry)
+                    bool success = (bool)_getEntryInternalMethod.Invoke(null, new object[] { i, logEntry });
+                    
+                    if (!success) continue;
+                    
+                    // Extract fields
+                    string fullMessage = _messageField?.GetValue(logEntry) as string ?? "";
+                    string file = _fileField?.GetValue(logEntry) as string ?? "";
+                    int line = _lineField?.GetValue(logEntry) as int? ?? 0;
+                    int mode = _modeField?.GetValue(logEntry) as int? ?? 0;
+                    int callstackStartUTF8 = _callstackTextStartUTF8Field?.GetValue(logEntry) as int? ?? 0;
+                    int callstackStartUTF16 = _callstackTextStartUTF16Field?.GetValue(logEntry) as int? ?? 0;
+                    
+                    // Parse message and stack trace
+                    var (actualMessage, stackTrace) = ParseMessageAndStackTrace(fullMessage, callstackStartUTF16, callstackStartUTF8);
+                    
+                    // Determine log type
+                    string entryLogType = DetermineLogTypeFromModeAndContent(mode, stackTrace);
+                    
+                    // Skip if filtering by log type and entry doesn't match
+                    if (unityLogTypes != null && !unityLogTypes.Contains(entryLogType))
+                        continue;
+                    
+                    filteredCount++;
+                    
+                    // Check if entry matches search criteria
+                    bool matches = true;
+                    if (hasSearchCriteria)
+                    {
+                        matches = false;
+                        
+                        // Search in message
+                        if (searchRegex != null)
+                        {
+                            matches = searchRegex.IsMatch(actualMessage);
+                            if (!matches && includeStackTrace && !string.IsNullOrEmpty(stackTrace))
+                            {
+                                matches = searchRegex.IsMatch(stackTrace);
+                            }
+                        }
+                        else if (!string.IsNullOrEmpty(searchKeyword))
+                        {
+                            string messageToSearch = caseSensitive ? actualMessage : actualMessage.ToLower();
+                            matches = messageToSearch.Contains(searchKeyword);
+                            
+                            if (!matches && includeStackTrace && !string.IsNullOrEmpty(stackTrace))
+                            {
+                                string stackTraceToSearch = caseSensitive ? stackTrace : stackTrace.ToLower();
+                                matches = stackTraceToSearch.Contains(searchKeyword);
+                            }
+                        }
+                    }
+                    
+                    if (!matches) continue;
+                    
+                    matchedCount++;
+                    
+                    // Check if we're in the offset range and haven't reached the limit yet
+                    if (currentIndex >= offset && logsArray.Count < limit)
+                    {
+                        var logObject = new JObject
+                        {
+                            ["message"] = actualMessage,
+                            ["type"] = entryLogType,
+                            ["timestamp"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")
+                        };
+                        
+                        // Only include stack trace if requested
+                        if (includeStackTrace)
+                        {
+                            logObject["stackTrace"] = stackTrace;
+                        }
+                        
+                        logsArray.Add(logObject);
+                    }
+                    
+                    currentIndex++;
+                    
+                    // Early exit if we've collected enough logs
+                    if (currentIndex >= offset + limit) break;
+                }
+            }
+            finally
+            {
+                // End getting entries
+                _endGettingEntriesMethod?.Invoke(null, null);
+            }
+            
+            return new JObject
+            {
+                ["logs"] = logsArray,
+                ["_totalCount"] = totalCount,
+                ["_filteredCount"] = filteredCount,
+                ["_matchedCount"] = matchedCount,
+                ["_returnedCount"] = logsArray.Count,
+                ["success"] = true
+            };
         }
         
         #if MCP_UNITY_DEBUG_MODE_VALUES

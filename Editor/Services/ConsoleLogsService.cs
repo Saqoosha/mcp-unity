@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -254,6 +255,143 @@ namespace McpUnity.Services
                     _logEntries.RemoveRange(0, CleanupThreshold);
                 }
             }
+        }
+        
+        /// <summary>
+        /// Search logs with keyword or regex pattern
+        /// </summary>
+        public JObject SearchLogsAsJson(string keyword = null, string regex = null, string logType = null, 
+            bool includeStackTrace = true, bool caseSensitive = false, int offset = 0, int limit = 50)
+        {
+            // Prepare search criteria
+            bool hasSearchCriteria = !string.IsNullOrEmpty(keyword) || !string.IsNullOrEmpty(regex);
+            Regex searchRegex = null;
+            string searchKeyword = keyword;
+            
+            // If regex is provided, use it instead of keyword
+            if (!string.IsNullOrEmpty(regex))
+            {
+                try
+                {
+                    searchRegex = new Regex(regex, caseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase);
+                }
+                catch (ArgumentException ex)
+                {
+                    return new JObject
+                    {
+                        ["logs"] = new JArray(),
+                        ["error"] = $"Invalid regex pattern: {ex.Message}",
+                        ["success"] = false
+                    };
+                }
+            }
+            else if (!string.IsNullOrEmpty(keyword) && !caseSensitive)
+            {
+                searchKeyword = keyword.ToLower();
+            }
+            
+            // Map MCP log types to Unity log types
+            HashSet<string> unityLogTypes = null;
+            if (!string.IsNullOrEmpty(logType))
+            {
+                if (LogTypeMapping.TryGetValue(logType, out var mapped))
+                {
+                    unityLogTypes = mapped;
+                }
+                else
+                {
+                    unityLogTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { logType };
+                }
+            }
+            
+            JArray logsArray = new JArray();
+            int totalCount = 0;
+            int filteredCount = 0;
+            int matchedCount = 0;
+            int currentIndex = 0;
+            
+            lock (_logEntries)
+            {
+                totalCount = _logEntries.Count;
+                
+                // Search through logs (newest first)
+                for (int i = _logEntries.Count - 1; i >= 0; i--)
+                {
+                    var entry = _logEntries[i];
+                    
+                    // Skip if filtering by log type and entry doesn't match
+                    if (unityLogTypes != null && !unityLogTypes.Contains(entry.Type.ToString()))
+                        continue;
+                    
+                    filteredCount++;
+                    
+                    // Check if entry matches search criteria
+                    bool matches = true;
+                    if (hasSearchCriteria)
+                    {
+                        matches = false;
+                        
+                        // Search in message
+                        if (searchRegex != null)
+                        {
+                            matches = searchRegex.IsMatch(entry.Message);
+                            if (!matches && includeStackTrace && !string.IsNullOrEmpty(entry.StackTrace))
+                            {
+                                matches = searchRegex.IsMatch(entry.StackTrace);
+                            }
+                        }
+                        else if (!string.IsNullOrEmpty(searchKeyword))
+                        {
+                            string messageToSearch = caseSensitive ? entry.Message : entry.Message.ToLower();
+                            matches = messageToSearch.Contains(searchKeyword);
+                            
+                            if (!matches && includeStackTrace && !string.IsNullOrEmpty(entry.StackTrace))
+                            {
+                                string stackTraceToSearch = caseSensitive ? entry.StackTrace : entry.StackTrace.ToLower();
+                                matches = stackTraceToSearch.Contains(searchKeyword);
+                            }
+                        }
+                    }
+                    
+                    if (!matches) continue;
+                    
+                    matchedCount++;
+                    
+                    // Check if we're in the offset range and haven't reached the limit yet
+                    if (currentIndex >= offset && logsArray.Count < limit)
+                    {
+                        var logObject = new JObject
+                        {
+                            ["message"] = entry.Message,
+                            ["type"] = entry.Type.ToString(),
+                            ["timestamp"] = entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff")
+                        };
+                        
+                        // Only include stack trace if requested
+                        if (includeStackTrace)
+                        {
+                            logObject["stackTrace"] = entry.StackTrace;
+                        }
+                        
+                        logsArray.Add(logObject);
+                    }
+                    
+                    currentIndex++;
+                    
+                    // Early exit if we've collected enough logs
+                    if (currentIndex >= offset + limit) break;
+                }
+            }
+            
+            return new JObject
+            {
+                ["logs"] = logsArray,
+                ["_totalCount"] = totalCount,
+                ["_filteredCount"] = filteredCount,
+                ["_matchedCount"] = matchedCount,
+                ["_returnedCount"] = logsArray.Count,
+                ["success"] = true
+            };
         }
         
 #if UNITY_6000_0_OR_NEWER
