@@ -73,7 +73,9 @@ namespace McpUnity.Utils
                 
             if (packageInfo != null && !string.IsNullOrEmpty(packageInfo.resolvedPath))
             {
-                return Path.Combine(packageInfo.resolvedPath, "Server~");
+                string serverPath = Path.Combine(packageInfo.resolvedPath, "Server~");
+
+                return CleanPathPrefix(serverPath);
             }
             
             var assets = AssetDatabase.FindAssets("tsconfig");
@@ -82,7 +84,9 @@ namespace McpUnity.Utils
             {
                 // Convert relative path to absolute path
                 var relativePath = AssetDatabase.GUIDToAssetPath(assets[0]);
-                return Path.GetFullPath(Path.Combine(Application.dataPath, "..", relativePath));
+                string fullPath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", relativePath));
+
+                return CleanPathPrefix(fullPath);
             }
             if (assets.Length > 0)
             {
@@ -90,10 +94,10 @@ namespace McpUnity.Utils
                 {
                     string relativePath = AssetDatabase.GUIDToAssetPath(assetJson);
                     string fullPath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", relativePath));
-                    
+
                     if(Path.GetFileName(Path.GetDirectoryName(fullPath)) == "Server~")
                     {
-                        return Path.GetDirectoryName(fullPath);
+                        return CleanPathPrefix(Path.GetDirectoryName(fullPath));
                     }
                 }
             }
@@ -104,6 +108,20 @@ namespace McpUnity.Utils
             Debug.LogError(errorString);
 
             return errorString;
+        }
+
+        /// <summary>
+        /// Cleans the path prefix by removing a leading "~" character if present on macOS.
+        /// </summary>
+        /// <param name="path">The path to clean.</param>
+        /// <returns>The cleaned path.</returns>
+        private static string CleanPathPrefix(string path)
+        {
+            if (path.StartsWith("~"))
+            {
+                return path.Substring(1);
+            }
+            return path;
         }
 
         /// <summary>

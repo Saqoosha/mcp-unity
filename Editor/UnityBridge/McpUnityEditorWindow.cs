@@ -22,6 +22,7 @@ namespace McpUnity.Unity
         private string _mcpConfigJson = "";
         private bool _tabsIndentationJson = false;
         private Vector2 _helpTabScrollPosition = Vector2.zero;
+        private Vector2 _serverTabScrollPosition = Vector2.zero;
 
         [MenuItem("Tools/MCP Unity/Server Window", false, 1)]
         public static void ShowWindow()
@@ -66,6 +67,7 @@ namespace McpUnity.Unity
 
         private void DrawServerTab()
         {
+            _serverTabScrollPosition = EditorGUILayout.BeginScrollView(_serverTabScrollPosition);
             EditorGUILayout.BeginVertical("box");
             
             // Server status
@@ -299,15 +301,20 @@ namespace McpUnity.Unity
                 }
             }
             
-            EditorGUILayout.EndVertical();
-            
+            EditorGUILayout.Separator();
+            EditorGUILayout.Separator();
+
             EditorGUILayout.Space(); 
 
             // Force Install Server button
             if (GUILayout.Button("Force Install Server", GUILayout.Height(30)))
             {
                 McpUnityServer.Instance.InstallServer();
+                McpLogger.LogInfo("MCP Unity Server installed successfully.");
             }
+            
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.EndScrollView();
         }
         
         private void DrawHelpTab()

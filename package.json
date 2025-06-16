@@ -2,7 +2,7 @@
   "name": "com.gamelovers.mcp-unity",
   "displayName": "MCP Unity Server",
   "author": "CoderGamester",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "unity": "2022.3",
   "license": "MIT",
   "description": "The purpose of this package is to provide a MCP Unity Server for executing Unity operations and request Editor information from AI MCP enabled hosts",

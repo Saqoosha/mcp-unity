@@ -5,8 +5,9 @@ const toolName = 'run_tests';
 const toolDescription = 'Runs Unity\'s Test Runner tests';
 const paramsSchema = z.object({
     testMode: z.string().optional().default('EditMode').describe('The test mode to run (EditMode or PlayMode) - defaults to EditMode (optional)'),
-    testFilter: z.string().optional().default('').describe('The specific test filter to run (e.g. specific test name or namespace) (optional)'),
-    returnOnlyFailures: z.boolean().optional().default(true).describe('Whether to show only failed tests in the results (optional)')
+    testFilter: z.string().optional().default('').describe('The specific test filter to run (e.g. specific test name or class name, must include namespace) (optional)'),
+    returnOnlyFailures: z.boolean().optional().default(true).describe('Whether to show only failed tests in the results (optional)'),
+    returnWithLogs: z.boolean().optional().default(false).describe('Whether to return the test logs in the results (optional)')
 });
 /**
  * Creates and registers the Run Tests tool with the MCP server
@@ -41,14 +42,15 @@ export function registerRunTestsTool(server, mcpUnity, logger) {
  * @throws McpUnityError if the request to Unity fails
  */
 async function toolHandler(mcpUnity, params = {}) {
-    const { testMode = 'EditMode', testFilter = '', returnOnlyFailures = true } = params;
+    const { testMode = 'EditMode', testFilter = '', returnOnlyFailures = true, returnWithLogs = false } = params;
     // Create and wait for the test run
     const response = await mcpUnity.sendRequest({
         method: toolName,
         params: {
             testMode,
             testFilter,
-            returnOnlyFailures
+            returnOnlyFailures,
+            returnWithLogs
         }
     });
     // Process the test results

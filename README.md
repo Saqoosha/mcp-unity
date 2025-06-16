@@ -113,22 +113,26 @@ The following tools are available for manipulating and querying Unity scenes and
 - Node.js 18 or later - to [start the server](#start-server)
 - npm 9 or later - to [debug the server](#debug-server)
 
+> [!IMPORTANT]
+> **Project Path Cannot Contain Spaces**
+>
+> It is crucial that the file path to your Unity project **does not contain any spaces**.
+> If your project path includes spaces, the MCP Client (e.g., Cursor, Claude, Windsurf) will fail to connect to the MCP Unity server.
+>
+> **Examples:**
+> -   ✅ **Works:** `C:\Users\YourUser\Documents\UnityProjects\MyAwesomeGame`
+> -   ❌ **Fails:** `C:\Users\Your User\Documents\Unity Projects\My Awesome Game`
+>
+> Please ensure your project is located in a path without spaces before proceeding with the installation.
+
 ## <a name="install-server"></a>Installation
 
 Installing this MCP Unity Server is a multi-step process:
 
-### Step 1: Install Unity MCP Server package via Unity Package Manager
-1. Open the Unity Package Manager (Window > Package Manager)
-2. Click the "+" button in the top-left corner
-3. Select "Add package from git URL..."
-4. Enter: `https://github.com/CoderGamester/mcp-unity.git`
-5. Click "Add"
-
-![package manager](https://github.com/user-attachments/assets/a72bfca4-ae52-48e7-a876-e99c701b0497)
-
-
-### Step 2: Install Node.js 
+### Step 1: Install Node.js 
 > To run MCP Unity server, you'll need to have Node.js 18 or later installed on your computer:
+
+![node](docs/node.jpg)
 
 <details>
 <summary><span style="font-size: 1.1em; font-weight: bold;">Windows</span></summary>
@@ -158,6 +162,15 @@ Installing this MCP Unity Server is a multi-step process:
    ```
 </details>
 
+### Step 2: Install Unity MCP Server package via Unity Package Manager
+1. Open the Unity Package Manager (Window > Package Manager)
+2. Click the "+" button in the top-left corner
+3. Select "Add package from git URL..."
+4. Enter: `https://github.com/CoderGamester/mcp-unity.git`
+5. Click "Add"
+
+![package manager](https://github.com/user-attachments/assets/a72bfca4-ae52-48e7-a876-e99c701b0497)
+
 ### Step 3: Configure AI LLM Client
 
 <details open>
@@ -167,7 +180,7 @@ Installing this MCP Unity Server is a multi-step process:
 2. Navigate to Tools > MCP Unity > Server Window
 3. Click on the "Configure" button for your AI LLM client as shown in the image below
 
-![image](https://github.com/user-attachments/assets/8d286e83-da60-40fa-bd6c-5de9a77c1820)
+![image](docs/configure.jpg)
 
 4. Confirm the configuration installation with the given popup
 
@@ -207,17 +220,6 @@ Open the MCP configuration file of your AI client (e.g. claude_desktop_config.js
 
 > When the AI client connects to the WebSocket server, it will automatically show in the green box in the window
 
-## Optional: Install Node.js Server
-By default, the Node.js server is installed in the `Server~/` directory. 
-In case of issues, you can force install it in by:
-
-1. Open the Unity Editor
-2. Navigate to Tools > MCP Unity > Server Window
-3. Click on "Force Install Server" button
-
-> [!TIP]  
-> The Node.js server is installed in the `Server~/` directory.
-
 ## Optional: Set WebSocket Port
 By default, the WebSocket server runs on port '8090'. You can change this port in two ways:
 
@@ -249,7 +251,15 @@ You can change depending on the OS you are using:
 <summary><span style="font-size: 1.1em; font-weight: bold;">Building the Node.js Server</span></summary>
 
 The MCP Unity server is built using Node.js . It requires to compile the TypeScript code to JavaScript in the `build` directory.
-This process is automatically handled by the Unity Editor when you click on "Start Server", but if you want to build it manually, you can follow these steps:
+In case of issues, you can force install it in by:
+
+1. Open the Unity Editor
+2. Navigate to Tools > MCP Unity > Server Window
+3. Click on "Force Install Server" button
+
+![install](docs/install.jpg)
+
+If you want to build it manually, you can follow these steps:
 
 1. Open a terminal/PowerShell/Command Prompt
 
