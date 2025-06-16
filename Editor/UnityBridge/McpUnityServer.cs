@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using UnityEngine;
 using UnityEditor;
@@ -141,6 +142,14 @@ namespace McpUnity.Unity
         {
             return _resources.TryGetValue(name, out resource);
         }
+        
+        /// <summary>
+        /// Get all resource names for debugging
+        /// </summary>
+        public string[] GetResourceNames()
+        {
+            return _resources.Keys.ToArray();
+        }
 
         /// <summary>
         /// Installs the MCP Node.js server by running 'npm install' and 'npm run build'
@@ -205,6 +214,10 @@ namespace McpUnity.Unity
             // Register AddAssetToSceneTool
             AddAssetToSceneTool addAssetToSceneTool = new AddAssetToSceneTool();
             _tools.Add(addAssetToSceneTool.Name, addAssetToSceneTool);
+            
+            // Register SearchConsoleLogsTool
+            SearchConsoleLogsTool searchConsoleLogsTool = new SearchConsoleLogsTool(_consoleLogsService);
+            _tools.Add(searchConsoleLogsTool.Name, searchConsoleLogsTool);
         }
         
         /// <summary>

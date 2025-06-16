@@ -5,7 +5,7 @@ export var LogLevel;
     LogLevel[LogLevel["INFO"] = 1] = "INFO";
     LogLevel[LogLevel["WARN"] = 2] = "WARN";
     LogLevel[LogLevel["ERROR"] = 3] = "ERROR";
-})(LogLevel || (LogLevel = {}));
+})(LogLevel = LogLevel || (LogLevel = {}));
 // Check environment variable for logging
 const isLoggingEnabled = process.env.LOGGING === 'true';
 // Check environment variable for logging in a file
